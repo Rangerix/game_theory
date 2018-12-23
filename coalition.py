@@ -2,6 +2,8 @@ import pandas,numpy,math
 import sys
 from sklearn import metrics
 from skfeature.function.similarity_based import fisher_score
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
 
 
 #======================================================================
@@ -30,14 +32,14 @@ for i in range(0,n-1):
 		info=metrics.normalized_mutual_info_score(var1,var2)
 		#info=criteria(var1,var2)
 		storedval[i][j]=info
-		#print(i,j,info)
-
-delta=numpy.repeat(0,n)
+		print(i,j,info)
+print("\n\npre processed")
+delta=numpy.repeat(0.0,n)
 coalitioncutoff=0.5
 for i in range(0,n-1):
 	newdata=numpy.delete(data,i,axis=1)
 	(_,m)=numpy.shape(newdata)
-	print(i,"new data dimension ",m)
+	#print(i,"new data dimension ",m)
 	for flag in range(1,(1<<m)-1 ):
 		if bin(flag).count("1")<=omega :
 			#print(flag,bin(flag))
@@ -68,6 +70,43 @@ for i in range(0,n-1):
 	#print(delta[i])
 	val=delta[i]/(1<<omega)
 	delta[i]=float(val)
-	print(delta[i])
+	#print(delta[i])
+print("delta done")
+#feature importance========================================= 
+featureimportance=numpy.repeat(0.0,n)
+for i in range(0,n-1):
+	var1=data[:,i]
+	var2=target
+	filtervalue=metrics.normalized_mutual_info_score(var1,var2) #here we can use any other filter
+	selectionvalue=filtervalue*delta[i]
+	featureimportance[i]=selectionvalue
+#print(featureimportance)
+sortedfeatures=(-featureimportance).argsort()
+print(sortedfeatures)
 
-#==============feature importance================
+
+
+#test accuracy=================================================================================
+ranking=sortedfeatures
+data=feature
+for loopval in range(1,b-1,1):
+	temp=ranking[0:loopval]
+	#print(temp)
+	datanew=data[:,temp]
+	
+	cross=10
+	maxacc=0
+	for _ in range(0,cross):
+		test_size=(1/cross)
+		X_train, X_test, y_train, y_test = train_test_split(datanew, target,stratify=target ,test_size=test_size)
+		
+		clf=RandomForestClassifier()
+		clf.fit(X_train,y_train)
+		val=clf.score(X_test,y_test)
+		if val>maxacc:
+			maxacc=val
+			savetrainX=X_train
+			savetrainY=y_train
+			savetestX=X_test
+			savetestY=y_test
+	print(loopval,maxacc)
