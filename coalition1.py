@@ -9,14 +9,14 @@ from sklearn.ensemble import RandomForestClassifier
 #======================================================================
 #DEFINE MUTUAL_INFO HERE	
 #======================================================================
-def choose(n, k):
+def choose(n,k):
 	"""
 	A fast way to calculate binomial coefficients by Andrew Dalke (contrib).
 	"""
 	if 0 <= k <= n:
 		ntok = 1
 		ktok = 1
-		for t in xrange(1, min(k, n - k) + 1):
+		for t in range(1, min(k, n - k) + 1):
 			ntok *= n
 			ktok *= t
 			n -= 1
@@ -24,7 +24,7 @@ def choose(n, k):
 	else:
 		return 0
 #=======================================================================
-
+'''
 def gen_iteration(num,start,end,count):
 	if count>=0:
 		print(num)
@@ -52,27 +52,7 @@ def gen_iteration(num,start,end,count):
 	num[start]=1
 	gen_iteration(num,start+1,end,count-1)
 	num[start]=0
-
-def gen_omega3(num,start,end,count):
-	#omega = 1 
-	for i in range(start,end+1):
-		t=tuple([i])
-		print(t)
-		alloutset.add(t)
-	#omega=2
-	for i in range(start,end):
-		for j in range(i+1,end+1):
-			t=tuple([i,j])
-			print(t)
-			alloutset.add(t)
-	#omega = 3
-	for i in range(start,end-1):
-		for j in range(i+1,end):
-			for k in range(j+1,end+1):
-				t=tuple([i,j,k])
-				print(t)
-				alloutset.add(t)
-
+'''
 #======================================================================
 infile=sys.argv[1]
 dataframe=pandas.read_csv(infile)
@@ -88,16 +68,17 @@ omega=3
 
 storedval=numpy.full((n,n),-2.0) #using the fact that normalized_mutual_info_score lies b/w 0 and 1
 for i in range(n):
+	print(i)
+	var1=data[:,i]
 	for j in range(n):
-		var1=data[:,i]
-		var2=data[:,j]
 		#this mutual_info_score : we can use any other criteria here
 		if storedval[j][i]== -2.0:
+			var2=data[:,j]
 			info=metrics.normalized_mutual_info_score(var1,var2)
 		else :
 			info=storedval[j][i]
 		storedval[i][j]=info
-		print(i,j,info)
+		#print(i,j,info)
 print("\n\npre processed score criteria")
 
 m=n-1
@@ -106,7 +87,6 @@ allout=[]
 alloutset=set()
 size=m
 num=numpy.repeat(0,size)
-gen_omega3(num,0,size-1,omega)
 #alloutset=set(tuple(i) for i in allout)
 
 print("\n\npre processed iteration")
@@ -119,41 +99,23 @@ coalitioncutoff=0.5
 for i in range(n):
 	newdata=numpy.delete(data,i,axis=1)
 	#(_,m)=numpy.shape(newdata)
-	print(i)
+	#print(i)
 	#print(i,"new data dimension ",m)
-	for flag in alloutset:
+	for j in range(m):
 		#print(flag,bin(flag))
+		#print(j)
+		#var1=data[:,i]
+		#var2=newdata[:,j]
 		independent=0
 		dependent=0
-		'''
-		for j in range(0,m):
-			if flag[j]==1 :
-				#print(j)
-				#var1=data[:,i]
-				#var2=newdata[:,j]
-				temp=j
-				if j>=i :
-					temp+=1
-				info=storedval[i][temp]
-				#info=metrics.normalized_mutual_info_score(var1,var2)
-				if info < 0.4:
-					independent= independent +1
-				else :
-					dependent=dependent+1
-		'''
-		for j in flag:
-			#print(j)
-			#var1=data[:,i]
-			#var2=newdata[:,j]
-			temp=j
-			if j>=i :
-				temp+=1
-			info=storedval[i][temp]
-			#info=metrics.normalized_mutual_info_score(var1,var2)
-			if info < 0.4:
-				independent= independent +1
-			else :
-				dependent=dependent+1
+		temp=j
+		if j>=i :
+			temp+=1
+		info=storedval[i][temp]
+		if info < 0.4:
+			independent= independent +1
+		else :
+			dependent=dependent+1
 		
 		p=1.0
 		if dependent != 0:
@@ -161,13 +123,17 @@ for i in range(n):
 		#print(independent,dependent,p)
 		#print(p)
 		if p>= coalitioncutoff:
-			delta[i]=delta[i]+1
-	print(delta[i])
-	#val=delta[i]/(1<<omega)
-	#delta[i]=float(val)
+			w_one[i]+=1
+	w_two_i=choose(w_one[i],2)+ (m- w_one[i])*w_one[i]
+	w_three_i=choose(w_one[i],3)+choose(w_one[i],2)*(m - w_one[i])
+	delta[i]=w_one[i]+w_three_i+w_two_i
+	#print(i,w_one[i],delta[i])
+	val=delta[i]/(1<<omega)
+	delta[i]=float(val)
 	#print(delta[i])
 print("delta done")
-print(delta)
+#print(w_one)
+#print(delta)
 #------------------calculate feature importance--------------------
 featureimportance=numpy.repeat(0.0,n)
 var2=target
@@ -185,7 +151,7 @@ print("ranking done ")
 #test accuracy==========================================================================
 ranking=sortedfeatures
 data=feature
-for loopval in range(1,b-1,2):
+for loopval in range(5,b-1,5):
 	temp=ranking[0:loopval]
 	#print(temp)
 	datanew=data[:,temp]
